@@ -58,15 +58,29 @@ $fontUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Jet
 $fontZip = "$env:TEMP\JetBrainsMono.zip"
 $fontDir = "$env:TEMP\JetBrainsMono"
 try {
-    Invoke-WebRequest -Uri $fontUrl -OutFile $fontZip -UseBasicParsing
-    Expand-Archive -Path $fontZip -DestinationPath $fontDir -Force
-    $shellApp = New-Object -ComObject Shell.Application
-    $fontsFolder = $shellApp.Namespace(0x14)  # Windows Fonts folder
-    Get-ChildItem "$fontDir\*.ttf" | ForEach-Object {
-        $fontsFolder.CopyHere($_.FullName, 0x10)  # 0x10 = overwrite
+    $userFontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
+    New-Item -ItemType Directory -Path $userFontDir -Force | Out-Null
+    # Skip if already installed
+    $already = Get-ChildItem $userFontDir -Filter "JetBrainsMono*NerdFont*.ttf" -EA SilentlyContinue
+    if ($already) {
+        Write-Host "  Font already installed — skipping."
+    } else {
+        Invoke-WebRequest -Uri $fontUrl -OutFile $fontZip -UseBasicParsing
+        Expand-Archive -Path $fontZip -DestinationPath $fontDir -Force
+        $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+        if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+        Get-ChildItem "$fontDir\*.ttf" | ForEach-Object {
+            $dest = Join-Path $userFontDir $_.Name
+            Copy-Item $_.FullName $dest -Force
+            # Register per-user without UAC
+            try {
+                $fontName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name) + " (TrueType)"
+                New-ItemProperty -Path $regPath -Name $fontName -Value $dest -PropertyType String -Force | Out-Null
+            } catch {}
+        }
+        Remove-Item $fontZip, $fontDir -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "  Font installed (per-user). Set your terminal font to 'JetBrainsMono Nerd Font'."
     }
-    Remove-Item $fontZip, $fontDir -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "  Font installed. Set your terminal font to 'JetBrainsMono Nerd Font'."
 } catch {
     Write-Host "  ⚠ Could not auto-install font. Download from: https://www.nerdfonts.com/font-downloads" -ForegroundColor Yellow
 }
