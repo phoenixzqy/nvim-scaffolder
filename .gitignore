@@ -1,0 +1,9 @@
+# Pester test artifacts
+tests/TestResults.xml
+
+# Backups produced by Deploy-Config
+*.bak.*
+
+# OS cruft
+Thumbs.db
+.DS_Store

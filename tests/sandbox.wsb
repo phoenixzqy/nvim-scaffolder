@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Windows Sandbox configuration — runs the scaffolder in a clean, ephemeral
+  Windows VM. This is the best way to verify the install really works on a
+  fresh machine.
+
+  Prerequisite (one-time, elevated):
+    Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM -All
+    (then reboot)
+
+  Usage:
+    Double-click tests\sandbox.wsb  (or: explorer sandbox.wsb)
+
+  The repo is mapped READ-ONLY at C:\repo inside the sandbox; the sandbox
+  auto-launches install-all.ps1 on logon and tees output to the desktop so
+  you can eyeball results before the VM is torn down.
+
+  NOTE: Edit the HostFolder path below if the repo lives elsewhere.
+-->
+<Configuration>
+  <VGpu>Disable</VGpu>
+  <Networking>Default</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\Users\felixzhao\workspace\nvim-scaffolder</HostFolder>
+      <SandboxFolder>C:\repo</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location C:\repo; Write-Host '--- Scaffolder sandbox test ---' -ForegroundColor Magenta; .\install-all.ps1 -DryRun; Write-Host ''; Write-Host 'Ready. Run: .\install-all.ps1   to do a real install inside the sandbox.' -ForegroundColor Yellow"</Command>
+  </LogonCommand>
+</Configuration>
