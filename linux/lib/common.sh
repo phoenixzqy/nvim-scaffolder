@@ -68,12 +68,14 @@ as_root() {
 }
 
 # ── APT helpers ───────────────────────────────────────────────────────────
-# Idempotent apt install.
+# Install or upgrade an apt package.
 apt_install() {
   local pkg="$1"
   local display="${2:-$pkg}"
   if dpkg -s "$pkg" &>/dev/null; then
-    write_skip "$display"
+    write_step "Updating $display via apt…"
+    as_root apt-get install -y -qq "$pkg" 2>/dev/null
+    write_ok "$display is up to date"
   else
     write_step "Installing $display via apt…"
     as_root apt-get install -y -qq "$pkg"
@@ -180,14 +182,14 @@ github_release_install() {
   local dst="$HOME/.local/bin/$binary"
 
   if [[ -f "$dst" ]]; then
-    write_skip "$binary"
-    return
+    write_step "Updating $binary from GitHub…"
+  else
+    write_step "Downloading $binary v$version from GitHub…"
   fi
 
   local url="https://github.com/$repo/releases/download/v${version}/${asset}"
   local tmp
   tmp="$(mktemp -d)"
-  write_step "Downloading $binary v$version from GitHub…"
 
   if ! download "$url" "$tmp/$asset"; then
     rm -rf "$tmp"

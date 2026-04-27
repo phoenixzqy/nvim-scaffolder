@@ -81,17 +81,25 @@ function Install-WingetPackage {
     $name = if ($DisplayName) { $DisplayName } else { $Id }
     $listed = & winget list --id $Id --exact --source winget 2>$null | Out-String
     if ($listed -match [regex]::Escape($Id)) {
-        Write-Skip $name
-        return
-    }
-    Write-Step "Installing $name via winget…"
-    & winget install --id $Id --exact `
-        --accept-package-agreements --accept-source-agreements `
-        --silent --disable-interactivity | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn2 "winget exit=$LASTEXITCODE for $Id (may already be installed)"
+        Write-Step "Updating $name via winget…"
+        & winget upgrade --id $Id --exact `
+            --accept-package-agreements --accept-source-agreements `
+            --silent --disable-interactivity 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Ok "$name is up to date"
+        } else {
+            Write-Ok "Updated $name"
+        }
     } else {
-        Write-Ok "Installed $name"
+        Write-Step "Installing $name via winget…"
+        & winget install --id $Id --exact `
+            --accept-package-agreements --accept-source-agreements `
+            --silent --disable-interactivity | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn2 "winget exit=$LASTEXITCODE for $Id (may already be installed)"
+        } else {
+            Write-Ok "Installed $name"
+        }
     }
     Refresh-Path
 }
@@ -126,11 +134,13 @@ function Install-ScoopPackage {
     $spec = if ($Bucket) { "$Bucket/$Name" } else { $Name }
     $installed = & scoop list 2>$null | Out-String
     if ($installed -match "(?m)^\s*$([regex]::Escape($Name))\s") {
-        Write-Skip "$Name (scoop)"
-        return
+        Write-Step "Updating $Name via scoop…"
+        & scoop update $Name 2>$null | Out-Null
+        Write-Ok "Updated $Name"
+    } else {
+        Write-Step "Installing $spec via scoop…"
+        & scoop install $spec
+        Write-Ok "Installed $Name"
     }
-    Write-Step "Installing $spec via scoop…"
-    & scoop install $spec
     Refresh-Path
-    Write-Ok "Installed $Name"
 }

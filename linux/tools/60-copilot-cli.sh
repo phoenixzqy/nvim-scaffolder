@@ -8,7 +8,8 @@ if ! has_command npm; then
 fi
 
 if npm ls -g --depth=0 2>/dev/null | grep -q "@github/copilot@"; then
-  write_skip "@github/copilot"
+  write_step "Updating @github/copilot via npm…"
+  npm update -g "@github/copilot" --silent 2>/dev/null && write_ok "Updated @github/copilot" || write_ok "@github/copilot is up to date"
 else
   write_step "Installing @github/copilot via npm…"
   npm install -g "@github/copilot" --silent

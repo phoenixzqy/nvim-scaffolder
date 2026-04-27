@@ -6,7 +6,12 @@ write_banner "Ghostty (optional)"
 # As of 2025, Ghostty offers official .deb packages for Ubuntu/Debian.
 
 if has_command ghostty; then
-  write_skip "Ghostty"
+  # Try to update via apt if repo is available
+  if [[ -f /etc/apt/sources.list.d/ghostty.list ]]; then
+    apt_install ghostty "Ghostty"
+  else
+    write_ok "Ghostty is up to date (manual install)"
+  fi
 else
   if [[ "$DISTRO_ID" == "ubuntu" || "$DISTRO_ID" == "debian" ]]; then
     # Try the official Ghostty apt repo

@@ -21,11 +21,7 @@ if has_command batcat && ! has_command bat; then
   write_ok "Symlinked bat → batcat"
 fi
 
-# zoxide — install via official script (not always in apt)
-if has_command zoxide; then
-  write_skip "zoxide"
-else
-  write_step "Installing zoxide…"
-  run_remote_script https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh
-  write_ok "Installed zoxide"
-fi
+# zoxide — install/update via official script
+write_step "Installing/updating zoxide…"
+run_remote_script https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh
+write_ok "zoxide up to date"

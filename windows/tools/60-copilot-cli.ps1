@@ -10,7 +10,9 @@ if (-not (Test-Command npm)) {
 
 $listed = & npm ls -g --depth=0 2>$null | Out-String
 if ($listed -match "@github/copilot@") {
-    Write-Skip "@github/copilot"
+    Write-Step "Updating @github/copilot via npm…"
+    & npm update -g "@github/copilot" --silent 2>$null | Out-Null
+    Write-Ok "Updated @github/copilot"
 } else {
     Write-Step "Installing @github/copilot via npm…"
     & npm install -g "@github/copilot" --silent

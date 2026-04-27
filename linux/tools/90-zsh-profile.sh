@@ -2,16 +2,13 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 write_banner "Zsh + Oh My Zsh"
 
-# Install zsh if not present
-if has_command zsh; then
-  write_skip "zsh"
-else
-  apt_install zsh "Zsh"
-fi
+# Install/update zsh
+apt_install zsh "Zsh"
 
-# Install Oh My Zsh (idempotent — skips if already installed)
+# Install or update Oh My Zsh
 if [[ -d "$HOME/.oh-my-zsh" ]]; then
-  write_skip "Oh My Zsh"
+  write_step "Updating Oh My Zsh…"
+  git -C "$HOME/.oh-my-zsh" pull --rebase --quiet 2>/dev/null && write_ok "Oh My Zsh updated" || write_ok "Oh My Zsh is up to date"
 else
   write_step "Installing Oh My Zsh…"
   local tmp
@@ -26,23 +23,27 @@ else
   write_ok "Oh My Zsh installed"
 fi
 
-# Install popular plugins
+# Install or update popular plugins
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
-if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
+if [[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]]; then
+  write_step "Updating zsh-autosuggestions…"
+  git -C "$ZSH_CUSTOM/plugins/zsh-autosuggestions" pull --rebase --quiet 2>/dev/null \
+    && write_ok "zsh-autosuggestions updated" || write_ok "zsh-autosuggestions is up to date"
+else
   write_step "Installing zsh-autosuggestions…"
   git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
   write_ok "zsh-autosuggestions installed"
-else
-  write_skip "zsh-autosuggestions"
 fi
 
-if [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
+if [[ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]]; then
+  write_step "Updating zsh-syntax-highlighting…"
+  git -C "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" pull --rebase --quiet 2>/dev/null \
+    && write_ok "zsh-syntax-highlighting updated" || write_ok "zsh-syntax-highlighting is up to date"
+else
   write_step "Installing zsh-syntax-highlighting…"
   git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
   write_ok "zsh-syntax-highlighting installed"
-else
-  write_skip "zsh-syntax-highlighting"
 fi
 
 # Deploy .zshrc

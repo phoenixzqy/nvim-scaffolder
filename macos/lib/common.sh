@@ -35,12 +35,13 @@ ensure_brew() {
   write_ok "Homebrew installed"
 }
 
-# Idempotent brew install (formula).
+# Install or upgrade a brew formula.
 brew_install() {
   local pkg="$1"
   local display="${2:-$pkg}"
   if brew list --formula "$pkg" &>/dev/null; then
-    write_skip "$display"
+    write_step "Updating $display via brew…"
+    brew upgrade "$pkg" 2>/dev/null && write_ok "Updated $display" || write_ok "$display is up to date"
   else
     write_step "Installing $display via brew…"
     brew install "$pkg"
@@ -48,12 +49,13 @@ brew_install() {
   fi
 }
 
-# Idempotent brew cask install.
+# Install or upgrade a brew cask.
 brew_cask_install() {
   local cask="$1"
   local display="${2:-$cask}"
   if brew list --cask "$cask" &>/dev/null; then
-    write_skip "$display"
+    write_step "Updating $display via brew cask…"
+    brew upgrade --cask "$cask" 2>/dev/null && write_ok "Updated $display" || write_ok "$display is up to date"
   else
     write_step "Installing $display via brew cask…"
     brew install --cask "$cask"

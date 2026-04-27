@@ -2,9 +2,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 write_banner "Node.js (LTS)"
 
-if has_command node; then
-  write_skip "Node.js"
-else
+if ! has_command node; then
   # Install via NodeSource (LTS = 22.x as of 2025)
   if [[ ! -f /etc/apt/sources.list.d/nodesource.list ]]; then
     write_step "Adding NodeSource repository…"
@@ -19,8 +17,8 @@ else
     rm -f "$tmp"
     write_ok "NodeSource repo added"
   fi
-  apt_install nodejs "Node.js LTS"
 fi
+apt_install nodejs "Node.js LTS"
 
 # npm global installs: use ~/.local prefix to avoid sudo
 if has_command npm; then

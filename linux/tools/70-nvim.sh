@@ -3,7 +3,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 write_banner "Neovim + plugins"
 
 if has_command nvim; then
-  write_skip "Neovim"
+  # Update Neovim
+  if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+    apt_install neovim "Neovim"
+  else
+    write_step "Updating Neovim from GitHub release…"
+    local_arch="$ARCH_ALT"
+    download "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-${local_arch}.appimage" \
+      "$HOME/.local/bin/nvim"
+    chmod +x "$HOME/.local/bin/nvim"
+    write_ok "Neovim AppImage updated"
+  fi
 else
   # Use the Neovim PPA for the latest stable version (Ubuntu)
   if [[ "$DISTRO_ID" == "ubuntu" ]]; then
