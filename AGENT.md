@@ -21,8 +21,12 @@ windows/                    # Windows scaffolder (PowerShell)
   configs/<tool>/           #   config files deployed to their target locations
   tests/                    #   Pester 5 tests + Windows Sandbox .wsb
 
-macos/                      # macOS scaffolder (Bash)
-  install-nvim.sh           #   standalone Neovim installer
+macos/                      # macOS scaffolder (Bash + Homebrew)
+  install-all.sh            #   orchestrator — runs tools/*.sh in numeric order
+  capture.sh                #   snapshot live configs back into configs/
+  lib/common.sh             #   shared helpers (brew_install, deploy_config, etc.)
+  tools/NN-<name>.sh        #   one script per tool, standalone & idempotent
+  configs/<tool>/           #   config files deployed to their target locations
 
 .ai/skills/                 # Reusable LLM skill prompts (see below)
 ```
@@ -43,12 +47,18 @@ macos/                      # macOS scaffolder (Bash)
 - Scripts must be idempotent — re-running on a machine that already has the
   tool installed should be a no-op (print "already present" and return).
 
-### Bash (macOS / Linux)
+### Bash (macOS)
 
+- Every `tools/*.sh` script **must** source `"$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"` near the top.
+- Scripts are named `NN-<tool>.sh` where NN is a two-digit sort order.
 - Scripts must start with `#!/usr/bin/env bash` and `set -euo pipefail`.
-- Use Homebrew (`brew install`) for macOS package management.
-- Back up existing configs before overwriting.
-- Print status messages with `echo "▸ ..."` for actions.
+- Use `brew_install` or `brew_cask_install` from `lib/common.sh` for idempotent
+  installs — never raw `brew install`.
+- Use `deploy_config` to place config files (handles backup of existing targets).
+- Use `write_banner`, `write_step`, `write_ok`, `write_skip`, `write_warn`
+  for consistent output.
+- Scripts must be idempotent — re-running should be a no-op when already installed.
+- Use `capture.sh` (macOS) to snapshot live configs back into the repo.
 
 ### Config Files
 

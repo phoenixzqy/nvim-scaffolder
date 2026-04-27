@@ -27,7 +27,6 @@ Or run a subset:
 ```
 windows/
   install-all.ps1          # orchestrator — runs tools/*.ps1 in numeric order
-  install-nvim.ps1         # standalone Neovim installer (Windows)
   capture.ps1              # snapshot live configs from this machine into configs/
   lib/common.ps1           # shared helpers (winget, scoop, deploy, backup)
   tools/
@@ -40,40 +39,57 @@ windows/
   tests/
 
 macos/
-  install-nvim.sh          # standalone Neovim installer (macOS)
+  install-all.sh           # orchestrator — runs tools/*.sh in numeric order
+  capture.sh               # snapshot live configs from this machine into configs/
+  lib/common.sh            # shared helpers (brew, deploy, backup)
+  tools/
+    00-homebrew.sh   10-git.sh   15-gh.sh   20-node.sh   25-python.sh
+    30-cli-tools.sh   40-fonts.sh   50-starship.sh   55-lazygit.sh
+    60-copilot-cli.sh   70-nvim.sh   80-ghostty.sh   90-zsh-profile.sh
+  configs/
+    nvim/   starship/   ghostty/   lazygit/   gh/   zsh/
 ```
 
-Each `windows/tools/*.ps1` is **standalone** — run it on its own to (re)install just
+Each `tools/*` script is **standalone** — run it on its own to (re)install just
 that tool. The orchestrator simply runs them in order. Config files live in
-`windows/configs/` as real files you can diff, edit, and review in PRs.
+`<platform>/configs/` as real files you can diff, edit, and review in PRs.
 
 ## Updating settings
 
 Edit the real config wherever the app lives (e.g. `~/.config/starship.toml`),
 then snapshot the change back into this repo and commit:
 
+```bash
+# macOS
+./macos/capture.sh
+git add macos/configs && git commit -m "tweak: starship palette"
+```
+
 ```powershell
-.\capture.ps1
+# Windows
+.\windows\capture.ps1
 git add windows/configs && git commit -m "tweak: starship palette"
 ```
 
 ## Tools covered
 
-| # | Tool | Winget / source | Config deployed |
-|---|------|-----------------|-----------------|
-| 00 | winget, scoop (+extras bucket) | built-in / https://get.scoop.sh | — |
-| 10 | Git | `Git.Git` | — |
-| 15 | GitHub CLI (gh) | `GitHub.cli` | `config.yml` (no tokens) |
-| 20 | Node.js LTS + `neovim`, `pnpm` npm globals | `OpenJS.NodeJS.LTS` | — |
-| 25 | Python 3.12 + `pynvim`, `black`, `pytest` | `Python.Python.3.12` | — |
-| 30 | ripgrep, fd, fzf, bat, zoxide, CMake | winget | — |
-| 40 | JetBrainsMono Nerd Font | nerd-fonts release zip (per-user, no admin) | — |
-| 50 | Starship prompt | `Starship.Starship` | `~/.config/starship.toml` |
-| 55 | Lazygit | scoop `extras/lazygit` | `%APPDATA%\lazygit\config.yml` |
-| 60 | GitHub Copilot CLI | `npm i -g @github/copilot` | — |
-| 70 | Neovim + plugins | `Neovim.Neovim` + lazy.nvim headless sync | `%LOCALAPPDATA%\nvim\` |
-| 80 | Windows Terminal | `Microsoft.WindowsTerminal` | `settings.json` (BlulocoDark + JetBrainsMono NF) |
-| 90 | PowerShell profile | — | `$PROFILE` (aliases, starship init, helpers) |
+Both platforms install the same core tools. Platform-specific differences noted below.
+
+| # | Tool | Windows (winget/scoop) | macOS (brew) | Config deployed |
+|---|------|----------------------|--------------|-----------------|
+| 00 | Package manager | winget + scoop | Homebrew | — |
+| 10 | Git + aliases | `Git.Git` | `git` | `~/.gitconfig` aliases |
+| 15 | GitHub CLI (gh) | `GitHub.cli` | `gh` | `config.yml` (no tokens) |
+| 20 | Node.js LTS + globals | `OpenJS.NodeJS.LTS` | `node` | — |
+| 25 | Python 3 + packages | `Python.Python.3.12` | `python3` | — |
+| 30 | rg, fd, fzf, bat, zoxide, cmake | winget | brew | — |
+| 40 | JetBrainsMono Nerd Font | nerd-fonts zip | brew cask | — |
+| 50 | Starship prompt | `Starship.Starship` | `starship` | `~/.config/starship.toml` |
+| 55 | Lazygit | scoop `extras/lazygit` | `lazygit` | `config.yml` |
+| 60 | GitHub Copilot CLI | `npm i -g @github/copilot` | same | — |
+| 70 | Neovim + plugins | `Neovim.Neovim` | `neovim` | `nvim/` config dir |
+| 80 | Terminal | Windows Terminal | Ghostty | `settings.json` / `config` |
+| 90 | Shell profile | PowerShell profile | zsh + Oh My Zsh | `$PROFILE` / `.zshrc` |
 
 ## Notes
 
@@ -138,13 +154,22 @@ Re-running any `windows/tools/*.ps1` on a machine that already has the tool inst
 .\windows\tools\40-fonts.ps1     # prints "JetBrainsMono Nerd Font (already present)"
 ```
 
-## macOS (nvim only — legacy)
+## macOS — Quick start
 
 ```bash
-./macos/install-nvim.sh
+git clone https://github.com/phoenixzqy/dev-scaffolder ~/workspace/dev-scaffolder
+cd ~/workspace/dev-scaffolder/macos
+chmod +x install-all.sh
+./install-all.sh
 ```
 
-On Windows, use `windows/install-all.ps1` or `windows/tools/70-nvim.ps1`.
+Or run a subset:
+
+```bash
+./install-all.sh --only nvim,starship,zsh-profile
+./install-all.sh --skip ghostty
+./install-all.sh --dry-run
+```
 
 ## Neovim key bindings
 
