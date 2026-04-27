@@ -4,46 +4,45 @@ Use this skill when adding a new tool to the macOS or Linux scaffolder.
 
 ## Steps
 
-1. **Create or update the install script** under `macos/` (or `linux/` when
-   that directory is added). The script must:
+1. **Create the install script** under `macos/tools/` or `linux/tools/`.
+   The script must source the shared lib and use its helpers:
 
    ```bash
    #!/usr/bin/env bash
-   set -euo pipefail
+   source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
+   write_banner "<Tool Name>"
 
-   echo "▸ Installing <tool>…"
-
-   # macOS: use Homebrew
-   brew install <formula>
+   # macOS: use brew helpers
+   brew_install <formula> "<Display Name>"
    # OR for casks:
-   brew install --cask <cask>
+   brew_cask_install <cask> "<Display Name>"
+
+   # Linux: use apt helper
+   apt_install <package> "<Display Name>"
+   # OR for tools not in apt:
+   github_release_install "owner/repo" "version" "asset.tar.gz" "binary"
 
    # Deploy config if needed:
-   CONFIG_DIR="$HOME/.config/<tool>"
-   if [[ -d "$CONFIG_DIR" ]]; then
-     BACKUP="$CONFIG_DIR.bak.$(date +%Y%m%d%H%M%S)"
-     echo "  ⚠ Backing up $CONFIG_DIR → $BACKUP"
-     mv "$CONFIG_DIR" "$BACKUP"
-   fi
-   mkdir -p "$CONFIG_DIR"
-   cp -r configs/<tool>/* "$CONFIG_DIR/"
-   echo "  ✓ Config deployed"
+   deploy_config "$SCAFFOLDER_ROOT/configs/<tool>/config" "$HOME/.config/<tool>/config"
    ```
 
-2. **Add config files** (if any) to `macos/configs/<tool>/` (or alongside the
-   script). Keep them as real, diffable files.
+2. **Add config files** (if any) to `<platform>/configs/<tool>/`.
+   Keep them as real, diffable files.
 
-3. **Verify**:
+3. **Add a capture rule** in `capture.sh` to snapshot the config back.
+
+4. **Verify**:
    - Script runs without errors on a fresh machine.
-   - Re-run is safe (idempotent — `brew install` is already idempotent).
+   - Re-run is safe (idempotent).
+   - `bash -n <script>` passes syntax check.
    - No secrets or machine-specific absolute paths are committed.
 
 ## Conventions
 
-- Use `#!/usr/bin/env bash` and `set -euo pipefail`.
-- Print status with `echo "▸ ..."` for actions, `echo "  ✓ ..."` for success.
-- Back up existing configs before overwriting.
-- Use Homebrew for macOS. For Linux, prefer the distro package manager or
-  direct downloads.
+- Use `#!/usr/bin/env bash` — common.sh handles `set -euo pipefail`.
+- Source `lib/common.sh` and use its output helpers (`write_banner`, `write_step`, etc.).
+- Use `brew_install`/`brew_cask_install` (macOS) or `apt_install`/`as_root` (Linux).
+- For Linux tools not in apt, use `github_release_install` or `curl` installers.
+- Back up existing configs via `deploy_config` (handles backup automatically).
 - Keep scripts standalone — a user should be able to run a single script
   without the orchestrator.

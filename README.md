@@ -1,7 +1,7 @@
 # 🖥️ Dev-Machine Scaffolder
 
 One-click reproducible setup for a fresh dev machine. Platform-specific scripts
-live under `windows/` and `macos/`.
+live under `windows/`, `macos/`, and `linux/`.
 
 ---
 
@@ -48,6 +48,17 @@ macos/
     60-copilot-cli.sh   70-nvim.sh   80-ghostty.sh   90-zsh-profile.sh
   configs/
     nvim/   starship/   ghostty/   lazygit/   gh/   zsh/
+
+linux/
+  install-all.sh           # orchestrator — runs tools/*.sh in numeric order
+  capture.sh               # snapshot live configs from this machine into configs/
+  lib/common.sh            # shared helpers (apt, deploy, backup, sudo)
+  tools/
+    00-apt-update.sh   10-git.sh   15-gh.sh   20-node.sh   25-python.sh
+    30-cli-tools.sh   40-fonts.sh   50-starship.sh   55-lazygit.sh
+    60-copilot-cli.sh   70-nvim.sh   80-ghostty.sh   90-zsh-profile.sh
+  configs/
+    nvim/   starship/   ghostty/   lazygit/   gh/   zsh/
 ```
 
 Each `tools/*` script is **standalone** — run it on its own to (re)install just
@@ -60,8 +71,8 @@ Edit the real config wherever the app lives (e.g. `~/.config/starship.toml`),
 then snapshot the change back into this repo and commit:
 
 ```bash
-# macOS
-./macos/capture.sh
+# macOS / Linux
+./macos/capture.sh   # or ./linux/capture.sh
 git add macos/configs && git commit -m "tweak: starship palette"
 ```
 
@@ -73,22 +84,23 @@ git add windows/configs && git commit -m "tweak: starship palette"
 
 ## Tools covered
 
-Both platforms install the same core tools. Platform-specific differences noted below.
+All three platforms install the same core tools. Platform-specific differences noted below.
 
-| # | Tool | Windows (winget/scoop) | macOS (brew) | Config deployed |
-|---|------|----------------------|--------------|-----------------|
-| 00 | Package manager | winget + scoop | Homebrew | — |
-| 10 | Git + aliases | `Git.Git` | `git` | `~/.gitconfig` aliases |
-| 15 | GitHub CLI (gh) | `GitHub.cli` | `gh` | `config.yml` (no tokens) |
-| 20 | Node.js LTS + globals | `OpenJS.NodeJS.LTS` | `node` | — |
-| 25 | Python 3 + packages | `Python.Python.3.12` | `python3` | — |
-| 30 | rg, fd, fzf, bat, zoxide, cmake | winget | brew | — |
-| 40 | JetBrainsMono Nerd Font | nerd-fonts zip | brew cask | — |
-| 50 | Starship prompt | `Starship.Starship` | `starship` | `~/.config/starship.toml` |
-| 55 | Lazygit | scoop `extras/lazygit` | `lazygit` | `config.yml` |
-| 60 | GitHub Copilot CLI | `npm i -g @github/copilot` | same | — |
-| 70 | Neovim + plugins | `Neovim.Neovim` | `neovim` | `nvim/` config dir |
-| 80 | Terminal | Windows Terminal | Ghostty | `settings.json` / `config` |
+| # | Tool | Windows (winget/scoop) | macOS (brew) | Linux (apt) | Config deployed |
+|---|------|----------------------|--------------|-------------|-----------------|
+| 00 | Package manager | winget + scoop | Homebrew | apt + build-essential | — |
+| 10 | Git + aliases | `Git.Git` | `git` | `git` | `~/.gitconfig` aliases |
+| 15 | GitHub CLI (gh) | `GitHub.cli` | `gh` | apt repo | `config.yml` (no tokens) |
+| 20 | Node.js LTS + globals | `OpenJS.NodeJS.LTS` | `node` | NodeSource | — |
+| 25 | Python 3 + packages | `Python.Python.3.12` | `python3` | `python3` | — |
+| 30 | rg, fd, fzf, bat, zoxide, cmake | winget | brew | apt + curl | — |
+| 40 | JetBrainsMono Nerd Font | nerd-fonts zip | brew cask | nerd-fonts zip | — |
+| 50 | Starship prompt | `Starship.Starship` | `starship` | curl installer | `~/.config/starship.toml` |
+| 55 | Lazygit | scoop `extras/lazygit` | `lazygit` | GitHub release | `config.yml` |
+| 60 | GitHub Copilot CLI | `npm i -g @github/copilot` | same | same | — |
+| 70 | Neovim + plugins | `Neovim.Neovim` | `neovim` | PPA / AppImage | `nvim/` config dir |
+| 80 | Terminal | Windows Terminal | Ghostty | Ghostty (optional) | `settings.json` / `config` |
+| 90 | Shell profile | PowerShell profile | zsh + Oh My Zsh | zsh + Oh My Zsh | `$PROFILE` / `.zshrc` |
 | 90 | Shell profile | PowerShell profile | zsh + Oh My Zsh | `$PROFILE` / `.zshrc` |
 
 ## Notes
@@ -170,6 +182,28 @@ Or run a subset:
 ./install-all.sh --skip ghostty
 ./install-all.sh --dry-run
 ```
+
+## Linux (Ubuntu/Debian) — Quick start
+
+```bash
+git clone https://github.com/phoenixzqy/dev-scaffolder ~/workspace/dev-scaffolder
+cd ~/workspace/dev-scaffolder/linux
+chmod +x install-all.sh
+./install-all.sh
+```
+
+Or run a subset:
+
+```bash
+./install-all.sh --only nvim,starship,zsh-profile
+./install-all.sh --skip ghostty
+./install-all.sh --dry-run
+```
+
+> **Note:** Tested on Ubuntu 22.04 / 24.04. Requires `sudo` for apt operations.
+> Ghostty is optional and will be skipped if the apt repo is unavailable.
+> On Ubuntu, `fd` and `bat` are available as `fdfind`/`batcat` — the scaffolder
+> creates symlinks in `~/.local/bin` for compatibility.
 
 ## Neovim key bindings
 

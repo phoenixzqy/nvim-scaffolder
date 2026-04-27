@@ -28,6 +28,13 @@ macos/                      # macOS scaffolder (Bash + Homebrew)
   tools/NN-<name>.sh        #   one script per tool, standalone & idempotent
   configs/<tool>/           #   config files deployed to their target locations
 
+linux/                      # Linux scaffolder (Bash + apt, Ubuntu/Debian)
+  install-all.sh            #   orchestrator — runs tools/*.sh in numeric order
+  capture.sh                #   snapshot live configs back into configs/
+  lib/common.sh             #   shared helpers (apt_install, deploy_config, sudo, arch detect)
+  tools/NN-<name>.sh        #   one script per tool, standalone & idempotent
+  configs/<tool>/           #   config files deployed to their target locations
+
 .ai/skills/                 # Reusable LLM skill prompts (see below)
 ```
 
@@ -60,11 +67,27 @@ macos/                      # macOS scaffolder (Bash + Homebrew)
 - Scripts must be idempotent — re-running should be a no-op when already installed.
 - Use `capture.sh` (macOS) to snapshot live configs back into the repo.
 
+### Bash (Linux)
+
+- Every `tools/*.sh` script **must** source `"$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"` near the top.
+- Scripts are named `NN-<tool>.sh` where NN is a two-digit sort order.
+- Scripts must start with `#!/usr/bin/env bash` and `set -euo pipefail`.
+- Use `apt_install` from `lib/common.sh` for idempotent installs — never raw `apt-get install`.
+- Use `as_root` for commands needing sudo — never raw `sudo`.
+- Use `add_apt_repo` for adding signed apt repositories (modern `/etc/apt/keyrings` approach).
+- Use `github_release_install` for tools not in apt (e.g., lazygit).
+- Use `deploy_config` to place config files (handles backup of existing targets).
+- Use `write_banner`, `write_step`, `write_ok`, `write_skip`, `write_warn`
+  for consistent output.
+- Scripts must be idempotent — re-running should be a no-op when already installed.
+- Target Ubuntu 22.04/24.04. Use `DISTRO_ID` from `lib/common.sh` when branching on distro.
+- Use `capture.sh` (Linux) to snapshot live configs back into the repo.
+
 ### Config Files
 
 - Config files live in `<platform>/configs/<tool>/` as real, diffable files.
 - Never commit secrets, tokens, or machine-specific paths (like absolute home dirs).
-- Use `capture.ps1` (Windows) to snapshot live configs back into the repo.
+- Use `capture.ps1` (Windows) or `capture.sh` (macOS/Linux) to snapshot live configs back into the repo.
 
 ### Testing
 
