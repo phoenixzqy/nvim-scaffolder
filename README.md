@@ -144,7 +144,7 @@ Re-running any `windows/tools/*.ps1` on a machine that already has the tool inst
 ./macos/install-nvim.sh
 ```
 
-The older `windows/install-nvim.ps1` is kept for compatibility; prefer `windows/install-all.ps1` or `windows/tools/70-nvim.ps1`.
+On Windows, use `windows/install-all.ps1` or `windows/tools/70-nvim.ps1`.
 
 ## Neovim key bindings
 
