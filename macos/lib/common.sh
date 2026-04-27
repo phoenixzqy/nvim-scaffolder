@@ -96,3 +96,11 @@ deploy_config() {
 
 # Check if a command exists.
 has_command() { command -v "$1" &>/dev/null; }
+
+# Load nvm into the current shell session.
+load_nvm() {
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    \. "$NVM_DIR/nvm.sh"
+  fi
+}

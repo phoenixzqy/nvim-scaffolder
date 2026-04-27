@@ -1,7 +1,28 @@
 #!/usr/bin/env bash
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
-write_banner "Node.js (LTS)"
-brew_install node "Node.js LTS"
+write_banner "Node.js (nvm + LTS)"
+
+# ── Install nvm via official installer ─────────────────────────────────────
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
+  write_step "Installing nvm…"
+  tmp="$(mktemp)"
+  curl -fsSL -o "$tmp" "https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"
+  bash "$tmp"
+  rm -f "$tmp"
+  write_ok "nvm installed"
+else
+  write_skip "nvm"
+fi
+
+# Load nvm into the current shell
+load_nvm
+
+# ── Install Node.js LTS via nvm ───────────────────────────────────────────
+write_step "Installing Node.js LTS via nvm…"
+nvm install --lts
+nvm alias default lts/* 2>/dev/null
+write_ok "Node.js LTS active (nvm)"
 
 if has_command npm; then
   write_step "Installing global npm packages (neovim provider, pnpm)…"

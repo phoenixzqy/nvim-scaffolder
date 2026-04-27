@@ -2,6 +2,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
 write_banner "GitHub Copilot CLI"
 
+load_nvm
 if ! has_command npm; then
   write_warn "npm not found — run tools/20-node.sh first."
   exit 1
