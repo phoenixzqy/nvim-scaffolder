@@ -1,0 +1,360 @@
+name: CI — Scaffolder Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Syntax checks (fast, runs on all platforms) ──────────────────────────
+  syntax:
+    name: Syntax check (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [linux, macos, windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check bash syntax (linux)
+        if: matrix.platform == 'linux'
+        run: |
+          echo "Checking linux/*.sh syntax…"
+          errors=0
+          for f in $(find linux -name '*.sh' -type f); do
+            if ! bash -n "$f"; then
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          echo "---"
+          if [[ $errors -gt 0 ]]; then
+            echo "❌ $errors file(s) have syntax errors"
+            exit 1
+          fi
+          echo "✅ All linux .sh files pass syntax check"
+
+      - name: Check bash syntax (macos)
+        if: matrix.platform == 'macos'
+        run: |
+          echo "Checking macos/*.sh syntax…"
+          errors=0
+          for f in $(find macos -name '*.sh' -type f); do
+            if ! bash -n "$f"; then
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          echo "---"
+          if [[ $errors -gt 0 ]]; then
+            echo "❌ $errors file(s) have syntax errors"
+            exit 1
+          fi
+          echo "✅ All macos .sh files pass syntax check"
+
+      - name: Check PowerShell syntax (windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem -Path windows -Recurse -Filter *.ps1 -File | ForEach-Object {
+            $errs = $null
+            $null = [System.Management.Automation.PSParser]::Tokenize(
+              (Get-Content -LiteralPath $_.FullName -Raw), [ref]$errs)
+            if ($errs -and $errs.Count -gt 0) {
+              Write-Host "FAIL: $($_.FullName)"
+              $errors += $_.FullName
+            }
+          }
+          if ($errors.Count -gt 0) {
+            Write-Host "❌ $($errors.Count) file(s) have syntax errors"
+            exit 1
+          }
+          Write-Host "✅ All windows .ps1 files pass syntax check"
+
+  # ── Linux scaffolder tests ──────────────────────────────────────────────
+  linux-test:
+    name: Linux scaffolder (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate lib/common.sh loads cleanly
+        run: |
+          # Source the library and verify helpers are defined
+          source linux/lib/common.sh
+          echo "DISTRO_ID=$DISTRO_ID"
+          echo "DISTRO_VERSION=$DISTRO_VERSION"
+          echo "ARCH=$ARCH"
+          echo "ARCH_ALT=$ARCH_ALT"
+
+          # Verify all expected functions exist
+          for fn in write_banner write_step write_ok write_skip write_warn \
+                    detect_distro detect_arch ensure_sudo as_root apt_install \
+                    add_apt_repo backup_path deploy_config has_command \
+                    ensure_local_bin download run_remote_script github_release_install; do
+            if ! declare -f "$fn" &>/dev/null && ! type "$fn" &>/dev/null; then
+              echo "MISSING: $fn"
+              exit 1
+            fi
+          done
+          echo "✅ All helper functions defined"
+
+      - name: Test distro detection
+        run: |
+          source linux/lib/common.sh
+          [[ "$DISTRO_ID" == "ubuntu" ]] || { echo "Expected ubuntu, got $DISTRO_ID"; exit 1; }
+          [[ "$ARCH" =~ ^(amd64|arm64)$ ]] || { echo "Unexpected arch: $ARCH"; exit 1; }
+          echo "✅ Distro: $DISTRO_ID $DISTRO_VERSION ($ARCH)"
+
+      - name: Test output helpers produce output
+        run: |
+          source linux/lib/common.sh
+          write_banner "Test Banner" | grep -q "Test Banner"
+          write_step "Test Step" | grep -q "Test Step"
+          write_ok "Test OK" | grep -q "Test OK"
+          write_skip "Test Skip" | grep -q "Test Skip"
+          write_warn "Test Warn" | grep -q "Test Warn"
+          echo "✅ Output helpers work"
+
+      - name: Test deploy_config with backup
+        run: |
+          source linux/lib/common.sh
+          # Create a source config
+          mkdir -p /tmp/test-configs
+          echo "test-content" > /tmp/test-configs/test.conf
+
+          # Deploy to a new location
+          deploy_config /tmp/test-configs/test.conf /tmp/test-deploy/test.conf
+          [[ -f /tmp/test-deploy/test.conf ]] || { echo "Deploy failed"; exit 1; }
+          [[ "$(cat /tmp/test-deploy/test.conf)" == "test-content" ]] || { echo "Content mismatch"; exit 1; }
+          echo "✅ Fresh deploy works"
+
+          # Deploy again — should backup the existing file
+          echo "updated-content" > /tmp/test-configs/test.conf
+          deploy_config /tmp/test-configs/test.conf /tmp/test-deploy/test.conf
+          [[ "$(cat /tmp/test-deploy/test.conf)" == "updated-content" ]] || { echo "Update failed"; exit 1; }
+          ls /tmp/test-deploy/test.conf.bak.* &>/dev/null || { echo "Backup not created"; exit 1; }
+          echo "✅ Re-deploy with backup works"
+
+      - name: Test has_command
+        run: |
+          source linux/lib/common.sh
+          has_command bash || { echo "bash should exist"; exit 1; }
+          ! has_command nonexistent_tool_xyz || { echo "nonexistent should fail"; exit 1; }
+          echo "✅ has_command works"
+
+      - name: Test ensure_local_bin
+        run: |
+          source linux/lib/common.sh
+          [[ -d "$HOME/.local/bin" ]] || { echo "~/.local/bin not created"; exit 1; }
+          [[ ":$PATH:" == *":$HOME/.local/bin:"* ]] || { echo "~/.local/bin not on PATH"; exit 1; }
+          echo "✅ ensure_local_bin works"
+
+      - name: Test download function
+        run: |
+          source linux/lib/common.sh
+          tmp="$(mktemp)"
+          download "https://raw.githubusercontent.com/phoenixzqy/dev-scaffolder/main/README.md" "$tmp"
+          [[ -s "$tmp" ]] || { echo "Download produced empty file"; exit 1; }
+          rm -f "$tmp"
+          echo "✅ download works"
+
+          # Test download failure
+          tmp2="$(mktemp)"
+          if download "https://httpbin.org/status/404" "$tmp2" 2>/dev/null; then
+            echo "Should have failed on 404"
+            rm -f "$tmp2"
+            exit 1
+          fi
+          rm -f "$tmp2"
+          echo "✅ download fails on 404"
+
+      - name: Test install-all.sh --dry-run
+        run: |
+          chmod +x linux/install-all.sh linux/tools/*.sh
+          output=$(./linux/install-all.sh --dry-run 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "dry run" || { echo "Missing dry-run message"; exit 1; }
+          echo "$output" | grep -q "apt-update" || { echo "Missing apt-update in plan"; exit 1; }
+          echo "$output" | grep -q "nvim" || { echo "Missing nvim in plan"; exit 1; }
+          echo "✅ --dry-run lists all tools"
+
+      - name: Test install-all.sh --only filter
+        run: |
+          chmod +x linux/install-all.sh
+          output=$(./linux/install-all.sh --only git --dry-run 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "\[+\] git" || { echo "git should be included"; exit 1; }
+          echo "$output" | grep -q "\[ \] nvim" || { echo "nvim should be excluded"; exit 1; }
+          echo "✅ --only filter works"
+
+      - name: Test install-all.sh --skip filter
+        run: |
+          chmod +x linux/install-all.sh
+          output=$(./linux/install-all.sh --skip ghostty --dry-run 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "\[ \] ghostty" || { echo "ghostty should be skipped"; exit 1; }
+          echo "$output" | grep -q "\[+\] git" || { echo "git should be included"; exit 1; }
+          echo "✅ --skip filter works"
+
+      - name: Test configs exist and are valid
+        run: |
+          # Verify all expected config files exist
+          for f in linux/configs/starship/starship.toml \
+                   linux/configs/lazygit/config.yml \
+                   linux/configs/gh/config.yml \
+                   linux/configs/ghostty/config \
+                   linux/configs/zsh/.zshrc \
+                   linux/configs/nvim/init.lua \
+                   linux/configs/nvim/lua/plugins.lua \
+                   linux/configs/nvim/lua/settings.lua \
+                   linux/configs/nvim/lua/keymaps.lua; do
+            [[ -f "$f" ]] || { echo "Missing config: $f"; exit 1; }
+          done
+          echo "✅ All config files present"
+
+          # Verify no secrets in gh config
+          if grep -qi 'oauth_token\|hosts:' linux/configs/gh/config.yml; then
+            # hosts: key with tokens would be a secret leak
+            if grep -q 'oauth_token' linux/configs/gh/config.yml; then
+              echo "❌ OAuth token found in gh config!"
+              exit 1
+            fi
+          fi
+          echo "✅ No secrets in configs"
+
+      - name: Test every tool script sources common.sh
+        run: |
+          errors=0
+          for f in linux/tools/*.sh; do
+            if ! grep -q 'source.*lib/common\.sh' "$f"; then
+              echo "FAIL: $f does not source lib/common.sh"
+              errors=$((errors + 1))
+            fi
+          done
+          if [[ $errors -gt 0 ]]; then
+            echo "❌ $errors scripts missing common.sh source"
+            exit 1
+          fi
+          echo "✅ All tool scripts source lib/common.sh"
+
+      - name: Live install — git + aliases (real apt install)
+        run: |
+          chmod +x linux/tools/10-git.sh
+          sudo bash linux/tools/10-git.sh
+          git config --global alias.l &>/dev/null || { echo "alias.l not set"; exit 1; }
+          git config --global alias.s &>/dev/null || { echo "alias.s not set"; exit 1; }
+          git config --global alias.la &>/dev/null || { echo "alias.la not set"; exit 1; }
+          echo "✅ Git aliases configured"
+
+  # ── macOS scaffolder tests ─────────────────────────────────────────────
+  macos-test:
+    name: macOS scaffolder
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate lib/common.sh loads cleanly
+        run: |
+          source macos/lib/common.sh
+          for fn in write_banner write_step write_ok write_skip write_warn \
+                    ensure_brew brew_install brew_cask_install backup_path \
+                    deploy_config has_command; do
+            if ! declare -f "$fn" &>/dev/null && ! type "$fn" &>/dev/null; then
+              echo "MISSING: $fn"
+              exit 1
+            fi
+          done
+          echo "✅ All helper functions defined"
+
+      - name: Test output helpers produce output
+        run: |
+          source macos/lib/common.sh
+          write_banner "Test Banner" | grep -q "Test Banner"
+          write_step "Test Step" | grep -q "Test Step"
+          write_ok "Test OK" | grep -q "Test OK"
+          echo "✅ Output helpers work"
+
+      - name: Test deploy_config with backup
+        run: |
+          source macos/lib/common.sh
+          mkdir -p /tmp/test-configs
+          echo "test-content" > /tmp/test-configs/test.conf
+          deploy_config /tmp/test-configs/test.conf /tmp/test-deploy/test.conf
+          [[ -f /tmp/test-deploy/test.conf ]] || { echo "Deploy failed"; exit 1; }
+          echo "updated" > /tmp/test-configs/test.conf
+          deploy_config /tmp/test-configs/test.conf /tmp/test-deploy/test.conf
+          ls /tmp/test-deploy/test.conf.bak.* &>/dev/null || { echo "Backup not created"; exit 1; }
+          echo "✅ Deploy + backup works"
+
+      - name: Test install-all.sh --dry-run
+        run: |
+          chmod +x macos/install-all.sh macos/tools/*.sh
+          output=$(./macos/install-all.sh --dry-run 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "dry run" || { echo "Missing dry-run message"; exit 1; }
+          echo "$output" | grep -q "homebrew" || { echo "Missing homebrew in plan"; exit 1; }
+          echo "✅ --dry-run works"
+
+      - name: Test --only and --skip filters
+        run: |
+          chmod +x macos/install-all.sh
+          only_out=$(./macos/install-all.sh --only git --dry-run 2>&1)
+          echo "$only_out" | grep -q "\[+\] git" || { echo "--only git failed"; exit 1; }
+          echo "$only_out" | grep -q "\[ \] nvim" || { echo "nvim should be excluded"; exit 1; }
+
+          skip_out=$(./macos/install-all.sh --skip ghostty --dry-run 2>&1)
+          echo "$skip_out" | grep -q "\[ \] ghostty" || { echo "--skip ghostty failed"; exit 1; }
+          echo "✅ Filters work"
+
+      - name: Test configs exist
+        run: |
+          for f in macos/configs/starship/starship.toml \
+                   macos/configs/lazygit/config.yml \
+                   macos/configs/gh/config.yml \
+                   macos/configs/ghostty/config \
+                   macos/configs/zsh/.zshrc \
+                   macos/configs/nvim/init.lua; do
+            [[ -f "$f" ]] || { echo "Missing: $f"; exit 1; }
+          done
+          echo "✅ All config files present"
+
+      - name: Test every tool script sources common.sh
+        run: |
+          errors=0
+          for f in macos/tools/*.sh; do
+            if ! grep -q 'source.*lib/common\.sh' "$f"; then
+              echo "FAIL: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          [[ $errors -eq 0 ]] || exit 1
+          echo "✅ All tool scripts source lib/common.sh"
+
+      - name: Live install — git + aliases (real brew install)
+        run: |
+          chmod +x macos/tools/10-git.sh
+          bash macos/tools/10-git.sh
+          git config --global alias.l &>/dev/null || { echo "alias.l not set"; exit 1; }
+          git config --global alias.s &>/dev/null || { echo "alias.s not set"; exit 1; }
+          echo "✅ Git aliases configured"
+
+  # ── Windows Pester tests ────────────────────────────────────────────────
+  windows-test:
+    name: Windows Pester tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester 5
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.0 -Force -Scope CurrentUser
+          Import-Module Pester -MinimumVersion 5.0
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          .\windows\tests\Invoke-Tests.ps1 -CI

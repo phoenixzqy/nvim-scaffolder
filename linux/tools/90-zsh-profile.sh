@@ -14,7 +14,15 @@ if [[ -d "$HOME/.oh-my-zsh" ]]; then
   write_skip "Oh My Zsh"
 else
   write_step "Installing Oh My Zsh…"
-  RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  local tmp
+  tmp="$(mktemp)"
+  if ! curl -fsSL -o "$tmp" https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh; then
+    rm -f "$tmp"
+    write_warn "Failed to download Oh My Zsh installer"
+    exit 1
+  fi
+  RUNZSH=no KEEP_ZSHRC=yes sh "$tmp" --unattended
+  rm -f "$tmp"
   write_ok "Oh My Zsh installed"
 fi
 

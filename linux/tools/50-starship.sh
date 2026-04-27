@@ -6,7 +6,15 @@ if has_command starship; then
   write_skip "Starship"
 else
   write_step "Installing Starship via official installer…"
-  curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin"
+  local tmp
+  tmp="$(mktemp)"
+  if ! curl -sS -o "$tmp" https://starship.rs/install.sh; then
+    rm -f "$tmp"
+    write_warn "Failed to download Starship installer"
+    exit 1
+  fi
+  sh "$tmp" --yes --bin-dir "$HOME/.local/bin"
+  rm -f "$tmp"
   write_ok "Starship installed"
 fi
 

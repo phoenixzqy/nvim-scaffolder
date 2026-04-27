@@ -23,7 +23,11 @@ write_warn() { printf '\033[33m  ⚠ %s\033[0m\n' "$1"; }
 ensure_brew() {
   if command -v brew &>/dev/null; then return; fi
   write_step "Installing Homebrew…"
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  local tmp
+  tmp="$(mktemp)"
+  curl -fsSL -o "$tmp" https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+  /bin/bash "$tmp"
+  rm -f "$tmp"
   # Add brew to PATH for Apple Silicon
   if [[ -f /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"

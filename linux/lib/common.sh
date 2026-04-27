@@ -149,7 +149,26 @@ ensure_local_bin
 download() {
   local url="$1"
   local dst="$2"
-  curl -fsSL -o "$dst" "$url"
+  if ! curl -fsSL -o "$dst" "$url"; then
+    echo "ERROR: Failed to download $url" >&2
+    return 1
+  fi
+}
+
+# Download a remote script, then execute it (safer than piping curl to bash).
+run_remote_script() {
+  local url="$1"; shift
+  local tmp
+  tmp="$(mktemp)"
+  if ! curl -fsSL -o "$tmp" "$url"; then
+    rm -f "$tmp"
+    echo "ERROR: Failed to download installer from $url" >&2
+    return 1
+  fi
+  bash "$tmp" "$@"
+  local rc=$?
+  rm -f "$tmp"
+  return $rc
 }
 
 # Install from GitHub release tarball/binary.
@@ -170,22 +189,37 @@ github_release_install() {
   tmp="$(mktemp -d)"
   write_step "Downloading $binary v$version from GitHub…"
 
-  download "$url" "$tmp/$asset"
+  if ! download "$url" "$tmp/$asset"; then
+    rm -rf "$tmp"
+    return 1
+  fi
 
   case "$asset" in
     *.tar.gz)
       tar -xzf "$tmp/$asset" -C "$tmp"
-      cp "$tmp/$binary" "$dst"
       ;;
     *.zip)
       unzip -o "$tmp/$asset" -d "$tmp" > /dev/null
-      cp "$tmp/$binary" "$dst"
       ;;
     *)
       cp "$tmp/$asset" "$dst"
+      chmod +x "$dst"
+      rm -rf "$tmp"
+      write_ok "Installed $binary to $dst"
+      return
       ;;
   esac
 
+  # Find the binary — may be at root or in a subdirectory
+  local binary_path
+  binary_path="$(find "$tmp" -name "$binary" -type f | head -n1)"
+  if [[ -z "$binary_path" ]]; then
+    echo "ERROR: Binary '$binary' not found in downloaded archive" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+
+  cp "$binary_path" "$dst"
   chmod +x "$dst"
   rm -rf "$tmp"
   write_ok "Installed $binary to $dst"

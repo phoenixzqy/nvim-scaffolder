@@ -14,7 +14,11 @@ FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FONT_VERS
 
 write_step "Downloading JetBrainsMono Nerd Font v${FONT_VERSION}…"
 tmp="$(mktemp -d)"
-download "$FONT_URL" "$tmp/JetBrainsMono.zip"
+if ! download "$FONT_URL" "$tmp/JetBrainsMono.zip"; then
+  rm -rf "$tmp"
+  write_warn "Failed to download font"
+  exit 1
+fi
 
 mkdir -p "$FONT_DIR"
 unzip -o "$tmp/JetBrainsMono.zip" -d "$FONT_DIR" > /dev/null

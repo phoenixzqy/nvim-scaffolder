@@ -26,6 +26,6 @@ if has_command zoxide; then
   write_skip "zoxide"
 else
   write_step "Installing zoxide…"
-  curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+  run_remote_script https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh
   write_ok "Installed zoxide"
 fi

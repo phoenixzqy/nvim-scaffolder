@@ -8,7 +8,15 @@ else
   # Install via NodeSource (LTS = 22.x as of 2025)
   if [[ ! -f /etc/apt/sources.list.d/nodesource.list ]]; then
     write_step "Adding NodeSource repository…"
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | as_root bash -
+    local tmp
+    tmp="$(mktemp)"
+    if ! curl -fsSL -o "$tmp" https://deb.nodesource.com/setup_lts.x; then
+      rm -f "$tmp"
+      write_warn "Failed to download NodeSource setup script"
+      exit 1
+    fi
+    as_root bash "$tmp"
+    rm -f "$tmp"
     write_ok "NodeSource repo added"
   fi
   apt_install nodejs "Node.js LTS"
