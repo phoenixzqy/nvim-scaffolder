@@ -28,6 +28,6 @@
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location C:\repo; Write-Host '--- Scaffolder sandbox test ---' -ForegroundColor Magenta; .\install-all.ps1 -DryRun; Write-Host ''; Write-Host 'Ready. Run: .\install-all.ps1   to do a real install inside the sandbox.' -ForegroundColor Yellow"</Command>
+    <Command>powershell.exe -NoExit -ExecutionPolicy Bypass -Command "Set-Location C:\repo\windows; Write-Host '--- Scaffolder sandbox test ---' -ForegroundColor Magenta; .\install-all.ps1 -DryRun; Write-Host ''; Write-Host 'Ready. Run: .\install-all.ps1   to do a real install inside the sandbox.' -ForegroundColor Yellow"</Command>
   </LogonCommand>
 </Configuration>

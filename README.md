@@ -1,15 +1,15 @@
-# 🖥️ Windows Dev-Machine Scaffolder
+# 🖥️ Dev-Machine Scaffolder
 
-One-click reproducible setup for a fresh Windows PC. Installs and configures my
-whole terminal stack — Neovim, Copilot CLI, Node, Python, Lazygit, Starship,
-Windows Terminal, Git, GitHub CLI, PowerShell profile, and more — exactly the
-way I like it.
+One-click reproducible setup for a fresh dev machine. Platform-specific scripts
+live under `windows/` and `macos/`.
 
-## Quick start (new machine)
+---
+
+## Windows — Quick start
 
 ```powershell
-git clone https://github.com/phoenixzqy/nvim-scaffolder $env:USERPROFILE\workspace\nvim-scaffolder
-cd $env:USERPROFILE\workspace\nvim-scaffolder
+git clone https://github.com/phoenixzqy/dev-scaffolder $env:USERPROFILE\workspace\dev-scaffolder
+cd $env:USERPROFILE\workspace\dev-scaffolder\windows
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 .\install-all.ps1
 ```
@@ -25,21 +25,27 @@ Or run a subset:
 ## Layout
 
 ```
-install-all.ps1          # orchestrator — runs tools/*.ps1 in numeric order
-capture.ps1              # snapshot live configs from this machine into configs/
-lib/common.ps1           # shared helpers (winget, scoop, deploy, backup)
-tools/
-  00-package-managers.ps1
-  10-git.ps1   15-gh.ps1   20-node.ps1   25-python.ps1
-  30-cli-tools.ps1   40-fonts.ps1   50-starship.ps1   55-lazygit.ps1
-  60-copilot-cli.ps1   70-nvim.ps1   80-windows-terminal.ps1   90-pwsh-profile.ps1
-configs/
-  nvim/   starship/   windows-terminal/   lazygit/   gh/   pwsh/
+windows/
+  install-all.ps1          # orchestrator — runs tools/*.ps1 in numeric order
+  install-nvim.ps1         # standalone Neovim installer (Windows)
+  capture.ps1              # snapshot live configs from this machine into configs/
+  lib/common.ps1           # shared helpers (winget, scoop, deploy, backup)
+  tools/
+    00-package-managers.ps1
+    10-git.ps1   15-gh.ps1   20-node.ps1   25-python.ps1
+    30-cli-tools.ps1   40-fonts.ps1   50-starship.ps1   55-lazygit.ps1
+    60-copilot-cli.ps1   70-nvim.ps1   80-windows-terminal.ps1   90-pwsh-profile.ps1
+  configs/
+    nvim/   starship/   windows-terminal/   lazygit/   gh/   pwsh/
+  tests/
+
+macos/
+  install-nvim.sh          # standalone Neovim installer (macOS)
 ```
 
-Each `tools/*.ps1` is **standalone** — run it on its own to (re)install just
+Each `windows/tools/*.ps1` is **standalone** — run it on its own to (re)install just
 that tool. The orchestrator simply runs them in order. Config files live in
-`configs/` as real files you can diff, edit, and review in PRs.
+`windows/configs/` as real files you can diff, edit, and review in PRs.
 
 ## Updating settings
 
@@ -48,7 +54,7 @@ then snapshot the change back into this repo and commit:
 
 ```powershell
 .\capture.ps1
-git add configs && git commit -m "tweak: starship palette"
+git add windows/configs && git commit -m "tweak: starship palette"
 ```
 
 ## Tools covered
@@ -105,15 +111,15 @@ The repo ships with two layers of tests.
 ### 1. Pester unit tests — fast, safe, runs anywhere
 
 ```powershell
-.\tests\Invoke-Tests.ps1          # pretty output
-.\tests\Invoke-Tests.ps1 -CI      # returns non-zero on failure
+.\windows\tests\Invoke-Tests.ps1          # pretty output
+.\windows\tests\Invoke-Tests.ps1 -CI      # returns non-zero on failure
 ```
 
-Covers ~60 assertions: every `.ps1` parses, every `tools/*.ps1` dot-sources the shared lib, `Deploy-Config` backs up existing targets, `-Only/-Skip/-DryRun` filters work, captured configs exist, and `gh/config.yml` has no OAuth tokens.
+Covers ~60 assertions: every `.ps1` parses, every `windows/tools/*.ps1` dot-sources the shared lib, `Deploy-Config` backs up existing targets, `-Only/-Skip/-DryRun` filters work, captured configs exist, and `gh/config.yml` has no OAuth tokens.
 
 ### 2. Windows Sandbox — fresh Windows VM, real install
 
-The only way to truly verify a from-scratch install works is to run it on a fresh Windows box. `tests\sandbox.wsb` spins up an ephemeral, disposable Windows VM that mounts this repo read-only and auto-runs `install-all.ps1` on logon.
+The only way to truly verify a from-scratch install works is to run it on a fresh Windows box. `windows/tests/sandbox.wsb` spins up an ephemeral, disposable Windows VM that mounts this repo read-only and auto-runs `install-all.ps1` on logon.
 
 One-time setup (elevated PowerShell, then reboot):
 
@@ -121,24 +127,24 @@ One-time setup (elevated PowerShell, then reboot):
 Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM -All
 ```
 
-Then just double-click `tests\sandbox.wsb`. The sandbox is destroyed when you close the window, so you can re-run as often as you like with zero state bleed.
+Then just double-click `windows/tests/sandbox.wsb`. The sandbox is destroyed when you close the window, so you can re-run as often as you like with zero state bleed.
 
 ### 3. Live idempotency check (on your current machine)
 
-Re-running any `tools/*.ps1` on a machine that already has the tool installed should be a no-op. This is tested explicitly and you can sanity-check on demand:
+Re-running any `windows/tools/*.ps1` on a machine that already has the tool installed should be a no-op. This is tested explicitly and you can sanity-check on demand:
 
 ```powershell
-.\tools\10-git.ps1       # prints "Git (already present)"
-.\tools\40-fonts.ps1     # prints "JetBrainsMono Nerd Font (already present)"
+.\windows\tools\10-git.ps1       # prints "Git (already present)"
+.\windows\tools\40-fonts.ps1     # prints "JetBrainsMono Nerd Font (already present)"
 ```
 
 ## macOS (nvim only — legacy)
 
 ```bash
-./install-nvim-macos.sh
+./macos/install-nvim.sh
 ```
 
-The older `install-nvim-windows.ps1` at the repo root is kept for compatibility; prefer `install-all.ps1` or `tools/70-nvim.ps1`.
+The older `windows/install-nvim.ps1` is kept for compatibility; prefer `windows/install-all.ps1` or `windows/tools/70-nvim.ps1`.
 
 ## Neovim key bindings
 

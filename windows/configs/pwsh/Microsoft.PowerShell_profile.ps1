@@ -5,6 +5,9 @@ New-Alias ll dir
 New-Alias grep ag
 New-Alias pskeys Get-PSReadLineKeyHandler
 
+# oh-my-zsh style `..` shortcut
+function .. { Set-Location .. }
+
 # go to microsoft work space
 function ms {
   cd "C:\Users\felixzhao\workspace\msnews-experiences"

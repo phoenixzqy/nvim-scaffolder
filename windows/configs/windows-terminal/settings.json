@@ -64,7 +64,8 @@
             "colorScheme": "BlulocoDark",
             "font": 
             {
-                "face": "JetBrainsMono Nerd Font"
+                "face": "JetBrainsMono Nerd Font",
+                "size": 10
             }
         },
         "list": 
